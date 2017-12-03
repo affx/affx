@@ -9,8 +9,18 @@ export interface Action<T extends string = string> {
 
 export type Command<Actions> = () => Promise<Actions | void>;
 
+export type ActionCreator<T, Actions> = (payload: T) => Actions | void;
+
+export type FailableActionCreator<T, Actions> = (
+  payload: { data?: T; error?: Error },
+) => Actions | void;
+
 export type CommandBuilder<T = null> = <Actions extends Action>(
-  actionCreator: (payload: T) => Actions | void,
+  actionCreator: ActionCreator<T, Actions>,
+) => Command<Actions>;
+
+export type FailableCommandBuilder<T = null> = <Actions extends Action>(
+  failableActionCreator: FailableActionCreator<T, Actions>,
 ) => Command<Actions>;
 
 export interface Operation<State extends object, Actions extends Action> {
