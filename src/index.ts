@@ -28,7 +28,7 @@ export interface Operation<State extends object, Actions extends Action> {
   commands?: Array<Command<Actions>>;
 }
 
-export type Reducer<State extends object, Actions extends Action> = (
+export type Update<State extends object, Actions extends Action> = (
   action: Actions,
 ) => (state: State) => Operation<State, Actions>;
 
@@ -49,7 +49,7 @@ export interface Dispatcher<Actions extends Action>
   ): (event: Event) => void;
 }
 
-export interface Reduceable<Actions extends Action> {
+export interface Updatable<Actions extends Action> {
   dispatch: Dispatcher<Actions>;
 }
 
@@ -84,7 +84,7 @@ const addToolsToDispatcher = <Actions extends Action>(
 export const buildDispatcher = <State extends object, Actions extends Action>(
   getState: () => State,
   setState: (state: State, f?: () => void) => void,
-  reducer: Reducer<State, Actions>,
+  update: Update<State, Actions>,
 ): Dispatcher<Actions> =>
   addToolsToDispatcher<Actions>(async function dispatcher(
     action: Actions | void,
@@ -95,7 +95,7 @@ export const buildDispatcher = <State extends object, Actions extends Action>(
 
     const state = getState();
 
-    const operation = reducer(action)(state);
+    const operation = update(action)(state);
 
     // NoOp
     if (!operation.commands && state === operation.state) {
