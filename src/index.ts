@@ -29,16 +29,17 @@ export type Update<State extends object, Actions extends Action> = (
 
 export type Dispatcher<Actions extends Action> = (action: Actions) => void;
 
-export interface Updatable<Actions extends Action> {
-  dispatch: Dispatcher<Actions>;
-}
-
 export const buildDispatcher = <State extends object, Actions extends Action>(
   getState: () => State,
   setState: (state: State, f?: () => void) => void,
   update: Update<State, Actions>,
+  watcher?: (action: Actions | void, getState: () => State) => void,
 ): Dispatcher<Actions> =>
   async function dispatcher(action: Actions | void): Promise<void | void[]> {
+    if (watcher) {
+      watcher(action, getState);
+    }
+
     if (!action) {
       return;
     }
@@ -88,3 +89,49 @@ export const buildDispatcher = <State extends object, Actions extends Action>(
       });
     }
   };
+
+// This Dispatcher is useful for testing purposes
+export interface WatchedDispatcher<Actions extends Action>
+  extends Dispatcher<Actions> {
+  getActions(): ReadonlyArray<Actions | void>;
+  getActionsTypes(): ReadonlyArray<Actions["type"]>;
+}
+
+export const buildWatchedDispatcher = <
+  State extends object,
+  Actions extends Action
+>(
+  getState: () => State,
+  setState: (state: State, f?: () => void) => void,
+  update: Update<State, Actions>,
+  watcher?: (action: Actions | void, getState: () => State) => void,
+): WatchedDispatcher<Actions> => {
+  const actions: Array<Actions | void> = [];
+
+  return Object.assign(
+    buildDispatcher(getState, setState, update, (action, freshGetState) => {
+      actions.push(action);
+
+      if (watcher) {
+        watcher(action, freshGetState);
+      }
+    }),
+    {
+      getActions(): ReadonlyArray<Actions | void> {
+        return actions;
+      },
+      getActionsTypes(): ReadonlyArray<Actions["type"]> {
+        return actions.reduce(
+          (acc, action) => {
+            if (!action) {
+              return acc;
+            }
+
+            return [...acc, action.type];
+          },
+          [] as ReadonlyArray<Actions["type"]>,
+        );
+      },
+    },
+  );
+};
