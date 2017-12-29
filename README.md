@@ -7,7 +7,7 @@ Embracing the [Micro Frontends](https://micro-frontends.org/) (and Elm)
 phylosophy, it allows to easily handle state at the _Component_ level, rather
 than at the _application_ level.
 
-AffX' syntax and concepts being very close from the Redux' ones, it's therefore
+AffX' syntax and concepts being very close from the Redux' ones, it's
 very easy to grasp. AffX' update function allows to return "commands"
 additionally to the state to perform side effects (such as `fetch`, `Date`,
 etc...), it's therefore strongly adviced to take a look at
@@ -32,7 +32,7 @@ or
 yarn add affx
 ```
 
-### A simple example using React
+### A simple example using React and react-affx
 
 The Actions and State types
 
@@ -43,32 +43,30 @@ type CounterActions = Action<"INCREMENT"> | Action<"DECREMENT">;
 interface CounterState {
   counter: number;
 }
+
+const initialState: CounterState = { counter: 0 };
 ```
 
 The Component
 
 ```typescript
-class Counter extends React.Component<{}, CounterState>
-  implements Updatable<CounterActions> {
-  public state: CounterState = { counter: 0 };
+// The `object` type hinting here prevents a known issue when the Component does not take any props
+// It will be resolved soon
 
-  // The whole logic lies here
-  private dispatch = dispatchBuilder(
-    () => this.state, // A getState function
-    this.getState.bind(this), // A setState function
-    update, // The update function, defined below
-  );
+// The WithAffxProps type is available in react-affx
+const AffxLessCounter: React.StatelessComponent<
+  object & WithAffxProps<CounterState, CounterActions>
+> = ({ dispatch, state }) => (
+  <div>
+    <button onClick={dispatch.always({ type: "INCREMENT" })}>+</button>
+    <button onClick={dispatch.always({ type: "DECREMENT" })}>-</button>
+    <strong>{state.counter}</strong>
+  </div>
+);
 
-  render() {
-    return (
-      <div>
-        <button onClick={this.dispatch.always({ type: "INCREMENT" })}>+</button>
-        <button onClick={this.dispatch.always({ type: "DECREMENT" })}>-</button>
-        <strong>{this.state.counter}</strong>
-      </div>
-    );
-  }
-}
+// We can now use the withAffx HOC defined by react-affx
+// The update function is defined below
+const Counter = withAffx(initialState, update)(Counter);
 ```
 
 The Update function
@@ -95,8 +93,8 @@ const update: Update<CounterState, CounterActions> = action => state => {
 
 ### The asynchronous effects (affects)
 
-Where AffX is how it handles the side effects. Let's say we want to add a button
-in our Counter Component that sends the counter state to a Rest API. Depending
+Where AffX shines is how it handles the side effects. Let's say we want to add a
+button in our Counter Component that sends the counter state to a Rest API. Depending
 on the UI framework we use (here React), the solution may be different, but we
 would have to call an injected service, or an imported function, to handle the
 asynchronicity ourself, in a somewhat heterogeneous manner, and mostly _inside_
@@ -111,7 +109,7 @@ Not with AffX:
   // We just add this button in our render method
   <button onClick={this.dispatch.always({ type: "SEND_TO_SERVER" })}>
 
-  // And finally we may update our "update" function
+  // And finally we may update our "update" function (pun intended)
   // ...
   case "SEND_TO_SERVER": {
     // ajax is defined in the affx-affects library and relies on fetch to perform the requests
@@ -138,6 +136,6 @@ add some "loading" attribute to our state while sending the counter state to the
 API.
 
 Also, the `actionCreator` we pass to `sentToServer` will be called once the
-Request is over (whether it failed or not), then it's result will be pass to the
+Request is over (whether it failed or not), then its result will be pass to the
 dispatcher method of our Component. The whole logic disappears from the
 Component, however, our update function remains pure!
