@@ -50,12 +50,9 @@ const initialState: CounterState = { counter: 0 };
 The Component
 
 ```typescript
-// The `object` type hinting here prevents a known issue when the Component does not take any props
-// It will be resolved soon
-
 // The WithAffxProps type is available in react-affx
 const AffxLessCounter: React.StatelessComponent<
-  object & WithAffxProps<CounterState, CounterActions>
+  OwnProps & WithAffxProps<CounterState, CounterActions>
 > = ({ dispatch, state }) => (
   <div>
     <button onClick={dispatch.always({ type: "INCREMENT" })}>+</button>
