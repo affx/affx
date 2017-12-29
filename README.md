@@ -93,7 +93,7 @@ const update: Update<CounterState, CounterActions> = action => state => {
 };
 ```
 
-### The effects
+### The asynchronous effects (affects)
 
 Where AffX is how it handles the side effects. Let's say we want to add a button
 in our Counter Component that sends the counter state to a Rest API. Depending
@@ -114,7 +114,7 @@ Not with AffX:
   // And finally we may update our "update" function
   // ...
   case "SEND_TO_SERVER": {
-    // ajax is defined by AffX and relies on fetch to perform the requests
+    // ajax is defined in the affx-affects library and relies on fetch to perform the requests
     const sendToServer = ajax(
       "https://www.my-super-rest-api/counters/", // URL
       "json", // Method used to decode the Response

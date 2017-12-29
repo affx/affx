@@ -1,13 +1,12 @@
 {
   "name": "affx",
-  "version": "0.2.1",
-  "description": "",
+  "version": "0.3.0",
+  "description": "The AffX library",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "scripts": {
     "build": "tsc",
-    "lint": "tslint --project tslint.json src/**/*.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "lint": "tslint --project tslint.json src/**/*.ts"
   },
   "keywords": [],
   "author": "",
