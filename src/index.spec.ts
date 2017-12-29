@@ -212,8 +212,72 @@ describe("Dispatcher", () => {
         expect(newState).toBe(state);
       });
 
+      it("should call the fake commands in parallel, dispatch the actions, and not change the state", async () => {
+        const fetchAction: Action<"FETCH_STUFF"> = {
+          type: "FETCH_STUFF",
+        };
+        const fetchSuccessActionOne: Action<"FETCH_STUFF_SUCCESS_ONE"> = {
+          type: "FETCH_STUFF_SUCCESS_ONE",
+        };
+        const fetchSuccessActionTwo: Action<"FETCH_STUFF_SUCCESS_TWO"> = {
+          type: "FETCH_STUFF_SUCCESS_TWO",
+        };
+
+        const commandOne: Command<typeof fetchSuccessActionOne> = jest.fn(
+          async () => Promise.resolve(fetchSuccessActionOne),
+        );
+
+        const commandTwo: Command<typeof fetchSuccessActionTwo> = jest.fn(
+          async () => Promise.resolve(fetchSuccessActionTwo),
+        );
+
+        const state = { fakeKey: "fakeValue" };
+
+        let newState: typeof state | null = null;
+
+        const update: Update<
+          typeof state,
+          | typeof fetchAction
+          | typeof fetchSuccessActionOne
+          | typeof fetchSuccessActionTwo
+        > = action => state => {
+          switch (action.type) {
+            case "FETCH_STUFF":
+              return { commands: [commandOne, commandTwo], state };
+            default:
+              return { state };
+          }
+        };
+
+        const dispatcher = buildWatchedDispatcher(
+          () => newState || state,
+          (_, f) => {
+            if (f) {
+              f();
+            }
+          },
+          update,
+          (_, getState) => {
+            newState = getState();
+          },
+        );
+
+        await dispatcher(fetchAction);
+
+        expect(commandOne).toHaveBeenCalled();
+        expect(commandTwo).toHaveBeenCalled();
+
+        expect(dispatcher.getActions()).toEqual([
+          fetchAction,
+          fetchSuccessActionOne,
+          fetchSuccessActionTwo,
+        ]);
+
+        expect(newState).toBe(state);
+      });
+
       describe("Chaining", () => {
-        it("should call the fake commands, dispatch the actions, and not change the state", async () => {
+        it("should call and chain the fake commands, dispatch the actions, and not change the state", async () => {
           const fetchAction: Action<"FETCH_STUFF"> = { type: "FETCH_STUFF" };
           const fetchSuccessAction: Action<"FETCH_STUFF_SUCCESS"> = {
             type: "FETCH_STUFF_SUCCESS",
@@ -292,8 +356,214 @@ describe("Dispatcher", () => {
     });
 
     describe("Update with Side Effects", () => {
-      it("should work", () => {
-        expect(true).toBe(true);
+      it("should call the fake command, dispatch the actions, and set counter to 2", async () => {
+        const fetchAction: Action<"FETCH_STUFF_AND_INCREMENT"> = {
+          type: "FETCH_STUFF_AND_INCREMENT",
+        };
+        const fetchSuccessAction: Action<"FETCH_STUFF_SUCCESS"> = {
+          type: "FETCH_STUFF_SUCCESS",
+        };
+
+        const command: Command<typeof fetchSuccessAction> = jest.fn(async () =>
+          Promise.resolve(fetchSuccessAction),
+        );
+
+        const state = { counter: 1 };
+
+        let newState: typeof state | null = null;
+
+        const update: Update<
+          typeof state,
+          typeof fetchAction | typeof fetchSuccessAction
+        > = action => state => {
+          switch (action.type) {
+            case "FETCH_STUFF_AND_INCREMENT":
+              return {
+                commands: [command],
+                state: { ...state, counter: state.counter + 1 },
+              };
+            default:
+              return { state };
+          }
+        };
+
+        const dispatcher = buildWatchedDispatcher(
+          () => newState || state,
+          (state, f) => {
+            newState = state;
+
+            if (f) {
+              f();
+            }
+          },
+          update,
+        );
+
+        await dispatcher(fetchAction);
+
+        expect(command).toHaveBeenCalled();
+
+        expect(dispatcher.getActions()).toEqual([
+          fetchAction,
+          fetchSuccessAction,
+        ]);
+
+        expect(newState).toEqual({ counter: 2 });
+      });
+
+      it("should call the fake commands in parallel, dispatch the actions, and set counter to 2", async () => {
+        const fetchAction: Action<"FETCH_STUFF_AND_INCREMENT"> = {
+          type: "FETCH_STUFF_AND_INCREMENT",
+        };
+        const fetchSuccessActionOne: Action<"FETCH_STUFF_SUCCESS_ONE"> = {
+          type: "FETCH_STUFF_SUCCESS_ONE",
+        };
+        const fetchSuccessActionTwo: Action<"FETCH_STUFF_SUCCESS_TWO"> = {
+          type: "FETCH_STUFF_SUCCESS_TWO",
+        };
+
+        const commandOne: Command<typeof fetchSuccessActionOne> = jest.fn(
+          async () => Promise.resolve(fetchSuccessActionOne),
+        );
+
+        const commandTwo: Command<typeof fetchSuccessActionTwo> = jest.fn(
+          async () => Promise.resolve(fetchSuccessActionTwo),
+        );
+
+        const state = { counter: 1 };
+
+        let newState: typeof state | null = null;
+
+        const update: Update<
+          typeof state,
+          | typeof fetchAction
+          | typeof fetchSuccessActionOne
+          | typeof fetchSuccessActionTwo
+        > = action => state => {
+          switch (action.type) {
+            case "FETCH_STUFF_AND_INCREMENT":
+              return {
+                commands: [commandOne, commandTwo],
+                state: { ...state, counter: state.counter + 1 },
+              };
+            default:
+              return { state };
+          }
+        };
+
+        const dispatcher = buildWatchedDispatcher(
+          () => newState || state,
+          (state, f) => {
+            newState = state;
+
+            if (f) {
+              f();
+            }
+          },
+          update,
+        );
+
+        await dispatcher(fetchAction);
+
+        expect(commandOne).toHaveBeenCalled();
+        expect(commandTwo).toHaveBeenCalled();
+
+        expect(dispatcher.getActions()).toEqual([
+          fetchAction,
+          fetchSuccessActionOne,
+          fetchSuccessActionTwo,
+        ]);
+
+        expect(newState).toEqual({ counter: 2 });
+      });
+
+      describe("Chaining", () => {
+        it("should call and chain the fake commands, dispatch the actions, and set counter to 3", async () => {
+          const fetchAction: Action<"FETCH_STUFF_AND_INCREMENT"> = {
+            type: "FETCH_STUFF_AND_INCREMENT",
+          };
+          const fetchSuccessAction: Action<"FETCH_STUFF_SUCCESS"> = {
+            type: "FETCH_STUFF_SUCCESS",
+          };
+          const fetchOtherAction: Action<
+            "FETCH_ANOTHER_STUFF_AND_INCREMENT"
+          > = {
+            type: "FETCH_ANOTHER_STUFF_AND_INCREMENT",
+          };
+          const fetchOtherSuccessAction: Action<
+            "FETCH_ANOTHER_STUFF_SUCCESS"
+          > = { type: "FETCH_ANOTHER_STUFF_SUCCESS" };
+
+          const commandFetchSuccess: Command<
+            typeof fetchSuccessAction
+          > = jest.fn(async () => Promise.resolve(fetchSuccessAction));
+
+          const commandFetchOther: Command<typeof fetchOtherAction> = jest.fn(
+            async () => Promise.resolve(fetchOtherAction),
+          );
+
+          const commandFetchOtherSuccess: Command<
+            typeof fetchOtherSuccessAction
+          > = jest.fn(async () => Promise.resolve(fetchOtherSuccessAction));
+
+          const state = { counter: 1 };
+
+          let newState: typeof state | null = null;
+
+          const update: Update<
+            typeof state,
+            | typeof fetchAction
+            | typeof fetchSuccessAction
+            | typeof fetchOtherAction
+            | typeof fetchOtherSuccessAction
+          > = action => state => {
+            switch (action.type) {
+              case "FETCH_STUFF_AND_INCREMENT":
+                return {
+                  commands: [commandFetchSuccess],
+                  state: { ...state, counter: state.counter + 1 },
+                };
+              case "FETCH_STUFF_SUCCESS":
+                return { commands: [commandFetchOther], state };
+              case "FETCH_ANOTHER_STUFF_AND_INCREMENT":
+                return {
+                  commands: [commandFetchOtherSuccess],
+                  state: { ...state, counter: state.counter + 1 },
+                };
+              default:
+                return { state };
+            }
+          };
+
+          const dispatcher = buildWatchedDispatcher(
+            () => newState || state,
+            (state, f) => {
+              newState = state;
+
+              if (f) {
+                f();
+              }
+            },
+            update,
+          );
+
+          await dispatcher(fetchAction);
+
+          expect(commandFetchSuccess).toHaveBeenCalled();
+          expect(commandFetchOther).toHaveBeenCalled();
+          expect(commandFetchOtherSuccess).toHaveBeenCalled();
+
+          expect(dispatcher.getActions()).toEqual([
+            fetchAction,
+            fetchSuccessAction,
+            fetchOtherAction,
+            fetchOtherSuccessAction,
+          ]);
+
+          expect(newState).toEqual({
+            counter: 3,
+          });
+        });
       });
     });
   });
