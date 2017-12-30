@@ -1,13 +1,6 @@
 // tslint:disable:no-shadowed-variable no-empty
 
-import {
-  Action,
-  buildDispatcher,
-  buildWatchedDispatcher,
-  Command,
-  Dispatcher,
-  Update,
-} from "./index";
+import { Action, Command, createWatchedDispatcher, Update } from "./index";
 
 describe("Dispatcher", () => {
   describe("No Affects", () => {
@@ -23,7 +16,7 @@ describe("Dispatcher", () => {
           state,
         });
 
-        const dispatcher = buildWatchedDispatcher(
+        const dispatcher = createWatchedDispatcher(
           () => state,
           () => {},
           update,
@@ -52,7 +45,7 @@ describe("Dispatcher", () => {
           }
         };
 
-        const dispatcher = buildWatchedDispatcher(
+        const dispatcher = createWatchedDispatcher(
           () => state,
           () => {},
           update,
@@ -83,7 +76,7 @@ describe("Dispatcher", () => {
           }
         };
 
-        const dispatcher = buildWatchedDispatcher(
+        const dispatcher = createWatchedDispatcher(
           () => state,
           (state, f) => {
             newState = state;
@@ -128,7 +121,7 @@ describe("Dispatcher", () => {
             }
           };
 
-          const dispatcher = buildWatchedDispatcher(
+          const dispatcher = createWatchedDispatcher(
             () => newState || state,
             (state, f) => {
               newState = state;
@@ -187,7 +180,7 @@ describe("Dispatcher", () => {
           }
         };
 
-        const dispatcher = buildWatchedDispatcher(
+        const dispatcher = createWatchedDispatcher(
           () => newState || state,
           (_, f) => {
             if (f) {
@@ -249,7 +242,7 @@ describe("Dispatcher", () => {
           }
         };
 
-        const dispatcher = buildWatchedDispatcher(
+        const dispatcher = createWatchedDispatcher(
           () => newState || state,
           (_, f) => {
             if (f) {
@@ -324,7 +317,7 @@ describe("Dispatcher", () => {
             }
           };
 
-          const dispatcher = buildWatchedDispatcher(
+          const dispatcher = createWatchedDispatcher(
             () => newState || state,
             (_, f) => {
               if (f) {
@@ -387,7 +380,7 @@ describe("Dispatcher", () => {
           }
         };
 
-        const dispatcher = buildWatchedDispatcher(
+        const dispatcher = createWatchedDispatcher(
           () => newState || state,
           (state, f) => {
             newState = state;
@@ -451,7 +444,7 @@ describe("Dispatcher", () => {
           }
         };
 
-        const dispatcher = buildWatchedDispatcher(
+        const dispatcher = createWatchedDispatcher(
           () => newState || state,
           (state, f) => {
             newState = state;
@@ -535,7 +528,7 @@ describe("Dispatcher", () => {
             }
           };
 
-          const dispatcher = buildWatchedDispatcher(
+          const dispatcher = createWatchedDispatcher(
             () => newState || state,
             (state, f) => {
               newState = state;
