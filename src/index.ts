@@ -13,11 +13,11 @@ export type FailableActionCreator<T, Actions extends Action> = (
   payload?: T,
 ) => Actions | void;
 
-export type CommandBuilder<T = null> = <Actions extends Action>(
+export type CommandCreator<T = null> = <Actions extends Action>(
   actionCreator: ActionCreator<T, Actions>,
 ) => Command<Actions>;
 
-export type FailableCommandBuilder<T = null> = <Actions extends Action>(
+export type FailableCommandCreator<T = null> = <Actions extends Action>(
   failableActionCreator: FailableActionCreator<T, Actions>,
 ) => Command<Actions>;
 
@@ -32,7 +32,7 @@ export type Update<State extends object, Actions extends Action> = (
 
 export type Dispatcher<Actions extends Action> = (action: Actions) => void;
 
-export const buildDispatcher = <State extends object, Actions extends Action>(
+export const createDispatcher = <State extends object, Actions extends Action>(
   getState: () => State,
   setState: (state: State, f?: () => void) => void,
   update: Update<State, Actions>,
@@ -100,7 +100,7 @@ export interface WatchedDispatcher<Actions extends Action>
   getActionsTypes(): ReadonlyArray<Actions["type"]>;
 }
 
-export const buildWatchedDispatcher = <
+export const createWatchedDispatcher = <
   State extends object,
   Actions extends Action
 >(
@@ -112,7 +112,7 @@ export const buildWatchedDispatcher = <
   const actions: Array<Actions | void> = [];
 
   return Object.assign(
-    buildDispatcher(getState, setState, update, (action, freshGetState) => {
+    createDispatcher(getState, setState, update, (action, freshGetState) => {
       actions.push(action);
 
       if (watcher) {
