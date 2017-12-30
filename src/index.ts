@@ -2,12 +2,15 @@ export interface Action<T extends string = string> {
   type: T;
 }
 
-export type Command<Actions> = () => Promise<Actions | void>;
+export type Command<Actions extends Action> = () => Promise<Actions | void>;
 
-export type ActionCreator<T, Actions> = (payload: T) => Actions | void;
+export type ActionCreator<T, Actions extends Action> = (
+  payload: T,
+) => Actions | void;
 
-export type FailableActionCreator<T, Actions> = (
-  payload: { data?: T; error?: Error },
+export type FailableActionCreator<T, Actions extends Action> = (
+  error: Error | null,
+  payload?: T,
 ) => Actions | void;
 
 export type CommandBuilder<T = null> = <Actions extends Action>(
