@@ -23,12 +23,17 @@ export type FailableCommandCreator<T = null> = <Actions extends Action>(
 
 export interface Operation<State extends object, Actions extends Action> {
   state: State;
-  commands?: Array<Command<Actions>>;
+  commands?: ReadonlyArray<Command<Actions>>;
 }
 
 export type Update<State extends object, Actions extends Action> = (
   action: Actions,
 ) => (state: State) => Operation<State, Actions>;
+
+export type Watcher<State extends object, Actions extends Action> = (
+  action: Actions | void,
+  getState: () => State,
+) => void;
 
 export type Dispatcher<Actions extends Action> = (action: Actions) => void;
 
@@ -36,7 +41,7 @@ export const createDispatcher = <State extends object, Actions extends Action>(
   getState: () => State,
   setState: (state: State, f?: () => void) => void,
   update: Update<State, Actions>,
-  watcher?: (action: Actions | void, getState: () => State) => void,
+  watcher?: Watcher<State, Actions>,
 ): Dispatcher<Actions> =>
   async function dispatcher(action: Actions | void): Promise<void | void[]> {
     if (watcher) {
@@ -68,8 +73,8 @@ export const createDispatcher = <State extends object, Actions extends Action>(
     // SideEffects
     if (operation.commands && state === operation.state) {
       return await Promise.all(
-        operation.commands.map(async effect => {
-          dispatcher(await effect());
+        operation.commands.map(async command => {
+          dispatcher(await command());
         }),
       );
     }
@@ -80,8 +85,8 @@ export const createDispatcher = <State extends object, Actions extends Action>(
         setState(operation.state, async () => {
           try {
             await Promise.all(
-              operation.commands!.map(async effect => {
-                dispatcher(await effect());
+              operation.commands!.map(async command => {
+                dispatcher(await command());
               }),
             );
             resolve();
@@ -107,7 +112,7 @@ export const createWatchedDispatcher = <
   getState: () => State,
   setState: (state: State, f?: () => void) => void,
   update: Update<State, Actions>,
-  watcher?: (action: Actions | void, getState: () => State) => void,
+  watcher?: Watcher<State, Actions>,
 ): WatchedDispatcher<Actions> => {
   const actions: Array<Actions | void> = [];
 
