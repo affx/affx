@@ -23,7 +23,7 @@ export type FailableCommandCreator<T = null> = <Actions extends Action>(
 
 export interface Operation<State extends object, Actions extends Action> {
   state: State;
-  commands?: ReadonlyArray<Command<Actions>>;
+  commands?: ReadonlyArray<Command<Actions>> | void;
 }
 
 export type Update<State extends object, Actions extends Action> = (
@@ -35,7 +35,9 @@ export type Watcher<State extends object, Actions extends Action> = (
   getState: () => State,
 ) => void;
 
-export type Dispatcher<Actions extends Action> = (action: Actions) => void;
+export type Dispatcher<Actions extends Action> = (
+  action: Actions | void,
+) => Promise<void>;
 
 export const createDispatcher = <State extends object, Actions extends Action>(
   getState: () => State,
@@ -43,7 +45,7 @@ export const createDispatcher = <State extends object, Actions extends Action>(
   update: Update<State, Actions>,
   watcher?: Watcher<State, Actions>,
 ): Dispatcher<Actions> =>
-  async function dispatcher(action: Actions | void): Promise<void | void[]> {
+  async function dispatcher(action: Actions | void): Promise<void> {
     if (watcher) {
       watcher(action, getState);
     }
@@ -72,11 +74,13 @@ export const createDispatcher = <State extends object, Actions extends Action>(
 
     // SideEffects
     if (operation.commands && state === operation.state) {
-      return await Promise.all(
+      await Promise.all(
         operation.commands.map(async command => {
           dispatcher(await command());
         }),
       );
+
+      return;
     }
 
     // UpdateWithSideEffects
@@ -89,6 +93,7 @@ export const createDispatcher = <State extends object, Actions extends Action>(
                 dispatcher(await command());
               }),
             );
+
             resolve();
           } catch (error) {
             reject(error);
@@ -98,32 +103,23 @@ export const createDispatcher = <State extends object, Actions extends Action>(
     }
   };
 
-// This Dispatcher is useful for testing purposes
-export interface WatchedDispatcher<Actions extends Action>
-  extends Dispatcher<Actions> {
+// The LogWatcher is useful for testing purposes
+export interface LogWatcher<State extends object, Actions extends Action>
+  extends Watcher<State, Actions> {
   getActions(): ReadonlyArray<Actions | void>;
   getActionsTypes(): ReadonlyArray<Actions["type"]>;
 }
 
-export const createWatchedDispatcher = <
+export const createLogWatcher = <
   State extends object,
   Actions extends Action
->(
-  getState: () => State,
-  setState: (state: State, f?: () => void) => void,
-  update: Update<State, Actions>,
-  watcher?: Watcher<State, Actions>,
-): WatchedDispatcher<Actions> => {
+>(): LogWatcher<State, Actions> => {
   const actions: Array<Actions | void> = [];
 
   return Object.assign(
-    createDispatcher(getState, setState, update, (action, freshGetState) => {
+    (action: Actions | void) => {
       actions.push(action);
-
-      if (watcher) {
-        watcher(action, freshGetState);
-      }
-    }),
+    },
     {
       getActions(): ReadonlyArray<Actions | void> {
         return actions;
