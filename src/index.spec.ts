@@ -2,6 +2,7 @@
 
 import {
   Action,
+  ActionCreator,
   Command,
   createDispatcher,
   createLogWatcher,
