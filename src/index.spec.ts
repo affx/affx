@@ -1,11 +1,20 @@
 // tslint:disable:no-shadowed-variable no-empty
 
-import { Action, Command, createWatchedDispatcher, Update } from "./index";
+import {
+  Action,
+  ActionCreator,
+  Command,
+  createDispatcher,
+  createLogWatcher,
+  Update,
+} from "./index";
 
 describe("Dispatcher", () => {
   describe("No Affects", () => {
     describe("NoOp", () => {
       it("should return the exact same state when the update function simply returns it", async () => {
+        const logWatcher = createLogWatcher();
+
         const action: Action<"NOOP"> = { type: "NOOP" };
 
         const state = { fakeKey: "fakeValue" };
@@ -16,11 +25,12 @@ describe("Dispatcher", () => {
           state,
         });
 
-        const dispatcher = createWatchedDispatcher(
+        const dispatcher = createDispatcher(
           () => state,
           () => {},
           update,
           (action, getState) => {
+            logWatcher(action, getState);
             newState = getState();
           },
         );
@@ -28,10 +38,12 @@ describe("Dispatcher", () => {
         await dispatcher(action);
 
         expect(newState).toBe(state);
-        expect(dispatcher.getActions()).toEqual([action]);
+        expect(logWatcher.getActions()).toEqual([action]);
       });
 
       it("should return the exact same state when performing a noop like actions", async () => {
+        const logWatcher = createLogWatcher();
+
         const action: Action<"NOOP"> = { type: "NOOP" };
 
         const state = { fakeKey: "fakeValue" };
@@ -45,11 +57,13 @@ describe("Dispatcher", () => {
           }
         };
 
-        const dispatcher = createWatchedDispatcher(
+        const dispatcher = createDispatcher(
           () => state,
           () => {},
           update,
           (action, getState) => {
+            logWatcher(action, getState);
+
             newState = getState();
           },
         );
@@ -57,7 +71,7 @@ describe("Dispatcher", () => {
         await dispatcher(action);
 
         expect(newState).toBe(state);
-        expect(dispatcher.getActions()).toEqual([action]);
+        expect(logWatcher.getActions()).toEqual([action]);
       });
     });
 
@@ -66,6 +80,8 @@ describe("Dispatcher", () => {
         const action: Action<"INCREMENT"> = { type: "INCREMENT" };
 
         const state = { value: 2 };
+
+        const logWatcher = createLogWatcher<typeof state, typeof action>();
 
         let newState: typeof state | null = null;
 
@@ -76,7 +92,7 @@ describe("Dispatcher", () => {
           }
         };
 
-        const dispatcher = createWatchedDispatcher(
+        const dispatcher = createDispatcher(
           () => state,
           (state, f) => {
             newState = state;
@@ -86,6 +102,7 @@ describe("Dispatcher", () => {
             }
           },
           update,
+          logWatcher,
         );
 
         await dispatcher(action);
@@ -94,12 +111,13 @@ describe("Dispatcher", () => {
           value: 3,
         });
 
-        expect(dispatcher.getActions()).toEqual([action]);
+        expect(logWatcher.getActions()).toEqual([action]);
       });
 
       describe("Chaining", () => {
         it("should return a new state with counter incremented by 2 and value set to 'test'", async () => {
           const incrementAction: Action<"INCREMENT"> = { type: "INCREMENT" };
+
           const setValueAction: Action<"SET_VALUE"> & { value: string } = {
             type: "SET_VALUE",
             value: "test",
@@ -108,6 +126,11 @@ describe("Dispatcher", () => {
           const state = { counter: 1, value: "" };
 
           let newState: typeof state | null = null;
+
+          const logWatcher = createLogWatcher<
+            typeof state,
+            typeof incrementAction | typeof setValueAction
+          >();
 
           const update: Update<
             typeof state,
@@ -121,7 +144,7 @@ describe("Dispatcher", () => {
             }
           };
 
-          const dispatcher = createWatchedDispatcher(
+          const dispatcher = createDispatcher(
             () => newState || state,
             (state, f) => {
               newState = state;
@@ -131,6 +154,7 @@ describe("Dispatcher", () => {
               }
             },
             update,
+            logWatcher,
           );
 
           await dispatcher(incrementAction);
@@ -142,7 +166,7 @@ describe("Dispatcher", () => {
             value: "test",
           });
 
-          expect(dispatcher.getActions()).toEqual([
+          expect(logWatcher.getActions()).toEqual([
             incrementAction,
             setValueAction,
             incrementAction,
@@ -155,7 +179,10 @@ describe("Dispatcher", () => {
   describe("With Affects", () => {
     describe("Side Effects", () => {
       it("should call the fake command, dispatch the actions, and not change the state", async () => {
+        const logWatcher = createLogWatcher();
+
         const fetchAction: Action<"FETCH_STUFF"> = { type: "FETCH_STUFF" };
+
         const fetchSuccessAction: Action<"FETCH_STUFF_SUCCESS"> = {
           type: "FETCH_STUFF_SUCCESS",
         };
@@ -180,7 +207,7 @@ describe("Dispatcher", () => {
           }
         };
 
-        const dispatcher = createWatchedDispatcher(
+        const dispatcher = createDispatcher(
           () => newState || state,
           (_, f) => {
             if (f) {
@@ -188,7 +215,9 @@ describe("Dispatcher", () => {
             }
           },
           update,
-          (_, getState) => {
+          (action, getState) => {
+            logWatcher(action, getState);
+
             newState = getState();
           },
         );
@@ -197,7 +226,7 @@ describe("Dispatcher", () => {
 
         expect(command).toHaveBeenCalled();
 
-        expect(dispatcher.getActions()).toEqual([
+        expect(logWatcher.getActions()).toEqual([
           fetchAction,
           fetchSuccessAction,
         ]);
@@ -206,6 +235,8 @@ describe("Dispatcher", () => {
       });
 
       it("should call the fake commands in parallel, dispatch the actions, and not change the state", async () => {
+        const logWatcher = createLogWatcher();
+
         const fetchAction: Action<"FETCH_STUFF"> = {
           type: "FETCH_STUFF",
         };
@@ -242,7 +273,7 @@ describe("Dispatcher", () => {
           }
         };
 
-        const dispatcher = createWatchedDispatcher(
+        const dispatcher = createDispatcher(
           () => newState || state,
           (_, f) => {
             if (f) {
@@ -250,7 +281,9 @@ describe("Dispatcher", () => {
             }
           },
           update,
-          (_, getState) => {
+          (action, getState) => {
+            logWatcher(action, getState);
+
             newState = getState();
           },
         );
@@ -260,7 +293,7 @@ describe("Dispatcher", () => {
         expect(commandOne).toHaveBeenCalled();
         expect(commandTwo).toHaveBeenCalled();
 
-        expect(dispatcher.getActions()).toEqual([
+        expect(logWatcher.getActions()).toEqual([
           fetchAction,
           fetchSuccessActionOne,
           fetchSuccessActionTwo,
@@ -271,7 +304,10 @@ describe("Dispatcher", () => {
 
       describe("Chaining", () => {
         it("should call and chain the fake commands, dispatch the actions, and not change the state", async () => {
+          const logWatcher = createLogWatcher();
+
           const fetchAction: Action<"FETCH_STUFF"> = { type: "FETCH_STUFF" };
+
           const fetchSuccessAction: Action<"FETCH_STUFF_SUCCESS"> = {
             type: "FETCH_STUFF_SUCCESS",
           };
@@ -317,7 +353,7 @@ describe("Dispatcher", () => {
             }
           };
 
-          const dispatcher = createWatchedDispatcher(
+          const dispatcher = createDispatcher(
             () => newState || state,
             (_, f) => {
               if (f) {
@@ -325,7 +361,9 @@ describe("Dispatcher", () => {
               }
             },
             update,
-            (_, getState) => {
+            (action, getState) => {
+              logWatcher(action, getState);
+
               newState = getState();
             },
           );
@@ -336,7 +374,7 @@ describe("Dispatcher", () => {
           expect(commandFetchOther).toHaveBeenCalled();
           expect(commandFetchOtherSuccess).toHaveBeenCalled();
 
-          expect(dispatcher.getActions()).toEqual([
+          expect(logWatcher.getActions()).toEqual([
             fetchAction,
             fetchSuccessAction,
             fetchOtherAction,
@@ -353,6 +391,7 @@ describe("Dispatcher", () => {
         const fetchAction: Action<"FETCH_STUFF_AND_INCREMENT"> = {
           type: "FETCH_STUFF_AND_INCREMENT",
         };
+
         const fetchSuccessAction: Action<"FETCH_STUFF_SUCCESS"> = {
           type: "FETCH_STUFF_SUCCESS",
         };
@@ -364,6 +403,11 @@ describe("Dispatcher", () => {
         const state = { counter: 1 };
 
         let newState: typeof state | null = null;
+
+        const logWatcher = createLogWatcher<
+          typeof state,
+          typeof fetchAction | typeof fetchSuccessAction
+        >();
 
         const update: Update<
           typeof state,
@@ -380,7 +424,7 @@ describe("Dispatcher", () => {
           }
         };
 
-        const dispatcher = createWatchedDispatcher(
+        const dispatcher = createDispatcher(
           () => newState || state,
           (state, f) => {
             newState = state;
@@ -390,13 +434,14 @@ describe("Dispatcher", () => {
             }
           },
           update,
+          logWatcher,
         );
 
         await dispatcher(fetchAction);
 
         expect(command).toHaveBeenCalled();
 
-        expect(dispatcher.getActions()).toEqual([
+        expect(logWatcher.getActions()).toEqual([
           fetchAction,
           fetchSuccessAction,
         ]);
@@ -408,9 +453,11 @@ describe("Dispatcher", () => {
         const fetchAction: Action<"FETCH_STUFF_AND_INCREMENT"> = {
           type: "FETCH_STUFF_AND_INCREMENT",
         };
+
         const fetchSuccessActionOne: Action<"FETCH_STUFF_SUCCESS_ONE"> = {
           type: "FETCH_STUFF_SUCCESS_ONE",
         };
+
         const fetchSuccessActionTwo: Action<"FETCH_STUFF_SUCCESS_TWO"> = {
           type: "FETCH_STUFF_SUCCESS_TWO",
         };
@@ -426,6 +473,13 @@ describe("Dispatcher", () => {
         const state = { counter: 1 };
 
         let newState: typeof state | null = null;
+
+        const logWatcher = createLogWatcher<
+          typeof state,
+          | typeof fetchAction
+          | typeof fetchSuccessActionOne
+          | typeof fetchSuccessActionTwo
+        >();
 
         const update: Update<
           typeof state,
@@ -444,7 +498,7 @@ describe("Dispatcher", () => {
           }
         };
 
-        const dispatcher = createWatchedDispatcher(
+        const dispatcher = createDispatcher(
           () => newState || state,
           (state, f) => {
             newState = state;
@@ -454,6 +508,7 @@ describe("Dispatcher", () => {
             }
           },
           update,
+          logWatcher,
         );
 
         await dispatcher(fetchAction);
@@ -461,7 +516,7 @@ describe("Dispatcher", () => {
         expect(commandOne).toHaveBeenCalled();
         expect(commandTwo).toHaveBeenCalled();
 
-        expect(dispatcher.getActions()).toEqual([
+        expect(logWatcher.getActions()).toEqual([
           fetchAction,
           fetchSuccessActionOne,
           fetchSuccessActionTwo,
@@ -475,14 +530,17 @@ describe("Dispatcher", () => {
           const fetchAction: Action<"FETCH_STUFF_AND_INCREMENT"> = {
             type: "FETCH_STUFF_AND_INCREMENT",
           };
+
           const fetchSuccessAction: Action<"FETCH_STUFF_SUCCESS"> = {
             type: "FETCH_STUFF_SUCCESS",
           };
+
           const fetchOtherAction: Action<
             "FETCH_ANOTHER_STUFF_AND_INCREMENT"
           > = {
             type: "FETCH_ANOTHER_STUFF_AND_INCREMENT",
           };
+
           const fetchOtherSuccessAction: Action<
             "FETCH_ANOTHER_STUFF_SUCCESS"
           > = { type: "FETCH_ANOTHER_STUFF_SUCCESS" };
@@ -502,6 +560,14 @@ describe("Dispatcher", () => {
           const state = { counter: 1 };
 
           let newState: typeof state | null = null;
+
+          const logWatcher = createLogWatcher<
+            typeof state,
+            | typeof fetchAction
+            | typeof fetchSuccessAction
+            | typeof fetchOtherAction
+            | typeof fetchOtherSuccessAction
+          >();
 
           const update: Update<
             typeof state,
@@ -528,7 +594,7 @@ describe("Dispatcher", () => {
             }
           };
 
-          const dispatcher = createWatchedDispatcher(
+          const dispatcher = createDispatcher(
             () => newState || state,
             (state, f) => {
               newState = state;
@@ -538,6 +604,7 @@ describe("Dispatcher", () => {
               }
             },
             update,
+            logWatcher,
           );
 
           await dispatcher(fetchAction);
@@ -546,7 +613,7 @@ describe("Dispatcher", () => {
           expect(commandFetchOther).toHaveBeenCalled();
           expect(commandFetchOtherSuccess).toHaveBeenCalled();
 
-          expect(dispatcher.getActions()).toEqual([
+          expect(logWatcher.getActions()).toEqual([
             fetchAction,
             fetchSuccessAction,
             fetchOtherAction,
